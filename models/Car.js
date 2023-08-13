@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
-//Create schema
-const carSchema = mongoose.Schema(
+const carSchema = new mongoose.Schema(
   {
     make: {
       type: String,
@@ -39,12 +38,13 @@ const carSchema = mongoose.Schema(
       type: Number,
       required: true,
     },
+    isDeleted: { type: Boolean, default: false, required: true },
   },
   {
     timestamps: true,
   }
 );
 
-//Create and export model
-const Car = mongoose.model("Car", carSchema);
+const Car = mongoose.model("Cars", carSchema);
+
 module.exports = Car;
