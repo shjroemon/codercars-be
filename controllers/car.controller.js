@@ -4,87 +4,81 @@ const carController = {};
 
 carController.createCar = async (req, res, next) => {
   try {
-    const { make, model, release_date, transmission_type, size, style, price } =
-      req.body;
+    // YOUR CODE HERE
+    const car = req.body;
+    const { make, model, price, release_date, size, style, transmission_type } =
+      car;
     if (
       !make ||
       !model ||
+      !price ||
       !release_date ||
-      !transmission_type ||
       !size ||
       !style ||
-      !price
+      !transmission_type
     ) {
-      throw new Error("Missing required info!");
+      throw new AppError(401, "Bad request", "Missing body info");
     }
-    const car = await Car.create({
-      make,
-      model,
-      release_date,
-      transmission_type,
-      size,
-      style,
-      price,
-    });
+    if (!car) throw new AppError(402, "Bad Request", "Create car Error");
 
-    return res.status(200).send({ message: "Create Car Successfully!", car });
+    const newCar = await Car.create(car);
+    res.send({ message: "Create Car Successfully!", car: newCar });
   } catch (err) {
-    res.status(400).send({ message: err.message });
+    // YOUR CODE HERE
+    next(err);
   }
 };
 
 carController.getCars = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = req.query.limit || 10;
-    const cars = await Car.find()
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
-    const total = await Car.countDocuments({ isDeleted: false });
-    return res
-      .status(200)
-      .json({
-        message: "Get Car List Successfully!",
-        cars,
-        page,
-        total: Math.ceil(total / limit),
-      });
+    // YOUR CODE HERE
+    let { page } = req.query;
+    page = parseInt(page) || 1;
+    const limit = 20;
+    let offset = limit * (page - 1);
+    // const listOfFound= await Car.find(carController)
+    let listCars = await Car.find();
+    listCars = listCars.reverse().slice(offset, offset + limit);
+    let totalCars = await Car.find().countDocuments();
+
+    let totalPage = Math.ceil(totalCars / limit);
+    res.status(200).send({
+      message: "Get Car List Successfully!",
+      cars: listCars,
+      page: page,
+      total: totalPage,
+    });
   } catch (err) {
-    res.status(400).send({ message: err.message });
+    next(err);
+    // YOUR CODE HERE
   }
 };
 
 carController.editCar = async (req, res, next) => {
   try {
+    // YOUR CODE HERE
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) throw new Error("Invalid ID");
+    const data = req.body;
 
-    const car = await Car.findByIdAndUpdate(
-      id,
-      { ...req.body },
-      { new: true, runValidators: true }
-    );
-    if (!car) throw new Error("Car not found!");
-    return res.status(200).send({ message: "Update Car Successfully!", car });
+    const options = { new: true };
+    const update = await Car.findByIdAndUpdate(id, data, options);
+    res.send({ message: "Update Car Successfully!", update });
   } catch (err) {
-    res.status(400).send({ message: err.message });
+    // YOUR CODE HERE
+    next(err);
   }
 };
 
 carController.deleteCar = async (req, res, next) => {
   try {
+    // YOUR CODE HERE
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) throw new Error("Invalid ID");
-    const car = await Car.findByIdAndUpdate(
-      id,
-      { isDeleted: true },
-      { new: true, runValidators: true }
-    );
-    if (!car) throw new Error("Car not found!");
-    return res.status(200).send({ message: "Delete Car Successfully!", car });
+    const options = { new: true };
+    const updateDeleteCar = await Car.findByIdAndDelete(id, options);
+    res.send({ message: "Update Car Successfully!", updateDeleteCar });
   } catch (err) {
-    res.status(400).send({ message: err.message });
+    // YOUR CODE HERE
+    next(err);
   }
 };
 

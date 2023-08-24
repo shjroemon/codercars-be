@@ -1,29 +1,30 @@
 const fs = require("fs");
 const csv = require("csvtojson");
+const Car = require("./models/Car");
+const mongoose = require("mongoose");
 
-const createCar = async () => {
-  let newData = await csv().fromFile("./archive/data.csv");
-  let data = JSON.parse(fs.readFileSync("./archive/carData.json"));
+mongoose.connect(
+  "mongodb+srv://shjroemon:daotuanhuy@cluster0.hodqjwv.mongodb.net/coder-cars",
+  () => {
+    console.log("Connected to Database!");
+  }
+);
 
-  newData = newData.slice(0, 200).map((e, i) => {
+const createProduct = async () => {
+  let newData = await csv().fromFile("data.csv");
+  newData = newData.map((e) => {
     return {
-      id: Number(i + 1),
       make: e.Make,
       model: e.Model,
-      release_date: e.Year,
+      release_date: Number(e.Year),
       transmission_type: e["Transmission Type"],
-      size: e["Vehicle Size"],
       style: e["Vehicle Style"],
-      price: e.MSRP,
+      size: e["Vehicle Size"],
+      price: Number(e.MSRP),
     };
   });
-
-  data.data = newData;
-  data.totalCar = newData.length;
-
-  fs.writeFileSync("./archive/carData.json", JSON.stringify(data));
-
-  console.log("Transform data successfully");
+  newData.forEach((e) => {
+    Car.create(e);
+  });
 };
-
-createCar();
+createProduct();
