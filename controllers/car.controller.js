@@ -3,58 +3,286 @@ const Car = require("../models/Car");
 const { sendResponse, AppError } = require("../helpers/utils.js");
 const carController = {};
 
-carController.createCar = async (req, res, next) => {
-	try {
-		const { make, model, release_date, transmission_type, size, style, price } = req.body;
-		if (!make || !model || !release_date || !transmission_type || !size || !style || !price) {
-			throw new Error('Missing required info!');
-		}
-		const car = await Car.create({ make, model, release_date, transmission_type, size, style, price });
+const carTypes = [
+  "MANUAL",
+  "AUTOMATIC",
+  "AUTOMATED_MANUAL",
+  "DIRECT_DRIVE",
+  "UNKNOWN",
+];
 
-		return res.status(200).send({ message: 'Create Car Successfully!', car });
-	} catch (err) {
-		res.status(400).send({ message: err.message });
-	}
+const carStyles = [
+  "2dr Hatchback",
+  "2dr SUV",
+  "4dr Hatchback",
+  "4dr SUV",
+  "Cargo Minivan",
+  "Cargo Van",
+  "Convertible",
+  "Convertible SUV",
+  "Coupe",
+  "Crew Cab Pickup",
+  "Passenger Minivan",
+  "Passenger Van",
+  "Regular Cab Pickup",
+  "Sedan",
+  "Wagon",
+];
+
+const carMake = [
+  "Acura",
+  "Aston Martin",
+  "Audi",
+  "BMW",
+  "Bentley",
+  "Buick",
+  "Cadillac",
+  "Chevrolet",
+  "Chrysler",
+  "Dodge",
+  "FIAT",
+  "Ferrari",
+  "Ford",
+  "GMC",
+  "HUMMER",
+  "Honda",
+  "Hyundai",
+  "Infiniti",
+  "Kia",
+  "Lamborghini",
+  "Land Rover",
+  "Lexus",
+  "Lincoln",
+  "Lotus",
+  "Maserati",
+  "Maybach",
+  "Mazda",
+  "Mercedes-Benz",
+  "Mitsubishi",
+  "Nissan",
+  "Oldsmobile",
+  "Plymouth",
+  "Pontiac",
+  "Porsche",
+  "Rolls-Royce",
+  "Saab",
+  "Scion",
+  "Subaru",
+  "Suzuki",
+  "Tesla",
+  "Toyota",
+  "Volkswagen",
+  "Volvo",
+];
+
+carController.createCar = async (req, res, next) => {
+  try {
+    const { make, model, price, release_date, size, style, transmission_type } =
+      req.body;
+    // YOUR CODE HERE
+    if (
+      !make ||
+      !model ||
+      !price ||
+      !release_date ||
+      !size ||
+      !style ||
+      !transmission_type
+    )
+      throw new AppError(402, "Bad Request", "Create Car Error");
+
+    if (!carMake.includes(make)) {
+      const error = new Error(
+        "Car does not exit. You need to change your MAKE"
+      );
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (price < 2000) {
+      const error = new Error("Car's price is too low");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!carTypes.includes(type)) {
+      const error = new Error(
+        "Type of car does not exit. You need to change your TYPE"
+      );
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!carStyles.includes(style)) {
+      const error = new Error(
+        "Style of car does not exit. You need to change your STYLE"
+      );
+      error.statusCode = 404;
+      throw error;
+    }
+    const created = await Car.create({
+      make,
+      model,
+      release_date,
+      transmission_type,
+      size,
+      style,
+      price,
+    });
+    sendResponse(res, 200, true, { car: created }, null, "Create Car Success");
+  } catch (err) {
+    // YOUR CODE HERE
+    next(err);
+  }
 };
 
 carController.getCars = async (req, res, next) => {
-	try {
-		const page = parseInt(req.query.page) || 1;
-		const limit = req.query.limit || 10;
-		const cars = await Car.find()
-			.sort({ createdAt: -1 })
-			.skip((page - 1) * limit)
-			.limit(limit);
-		const total = await Car.countDocuments({ isDeleted: false });
-		return res.status(200).json({ message: 'Get Car List Successfully!', cars, page, total: Math.ceil(total / limit) });
-	} catch (err) {
-		res.status(400).send({ message: err.message });
-	}
+  const page = req.query.page ? req.query.page : 1;
+  const limit = req.query.limit ? req.query.limit : 20;
+  const filter = req.query.filter ? req.query.filter : {};
+  // filter.isDeleted = false;
+  // console.log("first", filter);
+
+  try {
+    // YOUR CODE HERE
+    //mongoose query
+    let skip = (Number(page) - 1) * Number(limit);
+    const listOfFound = await Car.find(filter);
+    const result = listOfFound
+      .filter((item) => item.isDeleted != true)
+      .slice(skip, Number(limit) + skip);
+
+    sendResponse(
+      res,
+      200,
+      true,
+      { cars: result, page: page, total: result.length },
+      null,
+      "Get Car List Successfully!"
+    );
+  } catch (err) {
+    // YOUR CODE HERE
+    next(err);
+  }
 };
 
 carController.editCar = async (req, res, next) => {
-	try {
-		const { id } = req.params;
-		if (!mongoose.isValidObjectId(id)) throw new Error('Invalid ID');
+  //in real project you will getting id from req. For updating and deleting, it is recommended for you to use unique identifier such as _id to avoid duplication
+  //you will also get updateInfo from req
+  // empty target and info mean update nothing
 
-		const car = await Car.findByIdAndUpdate(id, { ...req.body }, { new: true, runValidators: true });
-		if (!car) throw new Error('Car not found!');
-		return res.status(200).send({ message: 'Update Car Successfully!', car });
-	} catch (err) {
-		res.status(400).send({ message: err.message });
-	}
+  try {
+    const targetId = req.params.id;
+
+    const { make, model, price, release_date, size, style, transmission_type } =
+      req.body;
+
+    //options allow you to modify query. e.g new true return lastest update of data
+    const options = { new: true };
+    //mongoose query
+    const findID = await Car.findById(targetId);
+
+    if (
+      !targetId ||
+      !make ||
+      !model ||
+      !price ||
+      !release_date ||
+      !size ||
+      !style ||
+      !transmission_type
+    ) {
+      const error = new Error("Missing required data.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!findID) {
+      const error = new Error("Car does not exists.");
+      error.statusCode = 500;
+      throw error;
+    }
+    if (findID.isDeleted) {
+      {
+        const error = new Error("Car does not exists to update.");
+        error.statusCode = 500;
+        throw error;
+      }
+    }
+    if (!carMake.includes(make)) {
+      const error = new Error("Car's brand does not exit");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (price < 2000) {
+      const error = new Error("Car's price is too low");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!carTypes.includes(type)) {
+      const error = new Error("Type of car does not exit");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!carStyles.includes(style)) {
+      const error = new Error("Style of car does not exit");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const updated = await Car.findByIdAndUpdate(targetId, updateInfo, options);
+
+    sendResponse(
+      res,
+      200,
+      true,
+      { car: updated },
+      null,
+      "Update Car Successfully!"
+    );
+  } catch (err) {
+    next(err);
+  }
 };
 
 carController.deleteCar = async (req, res, next) => {
-	try {
-		const { id } = req.params;
-		if (!mongoose.isValidObjectId(id)) throw new Error('Invalid ID');
-		const car = await Car.findByIdAndUpdate(id, { isDeleted: true }, { new: true, runValidators: true });
-		if (!car) throw new Error('Car not found!');
-		return res.status(200).send({ message: 'Delete Car Successfully!', car });
-	} catch (err) {
-		res.status(400).send({ message: err.message });
-	}
+  //in real project you will getting id from req. For updating and deleting, it is recommended for you to use unique identifier such as _id to avoid duplication
+
+  // empty target mean delete nothing
+
+  try {
+    const targetId = req.params.id;
+
+    //options allow you to modify query. e.g new true return lastest update of data
+    const options = { new: true };
+    //mongoose query
+    if (!targetId) {
+      const error = new Error("Missing required data.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // const updated = await Car.findByIdAndDelete(targetId, options);
+    const updated = await Car.findByIdAndUpdate(
+      targetId,
+      { isDeleted: true },
+      options
+    );
+
+    sendResponse(
+      res,
+      200,
+      true,
+      { car: updated },
+      null,
+      "Delete Car Successfully!"
+    );
+  } catch (err) {
+    next(err);
+  }
 };
 
 module.exports = carController;
